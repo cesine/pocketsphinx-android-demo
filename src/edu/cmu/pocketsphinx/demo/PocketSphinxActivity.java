@@ -10,6 +10,7 @@ import java.util.Map;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 import edu.cmu.pocketsphinx.*;
@@ -18,6 +19,7 @@ import edu.cmu.pocketsphinx.*;
 public class PocketSphinxActivity extends Activity implements
         RecognitionListener, AssetsTaskCallback {
 
+    private static final String TAG = "AndroidPocketSphinx";
     private static final String KWS_SEARCH_NAME = "wakeup";
     private static final String FORECAST_SEARCH = "forecast";
     private static final String DIGITS_SEARCH = "digits";
@@ -45,6 +47,8 @@ public class PocketSphinxActivity extends Activity implements
 
     @Override
     public void onPartialResult(Hypothesis hypothesis) {
+        Log.d(TAG, "Partial Hypothesis result recieved");
+
         String text = hypothesis.getHypstr();
         if (text.equals(KEYPHRASE))
             switchSearch(MENU_SEARCH);
@@ -58,11 +62,12 @@ public class PocketSphinxActivity extends Activity implements
 
     @Override
     public void onResult(Hypothesis hypothesis) {
+        Log.d(TAG, "Hypothesis result recieved");
         ((TextView) findViewById(R.id.result_text)).setText("");
         if (hypothesis != null) {
-    	    String text = hypothesis.getHypstr();
-    	    makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
-	}
+            String text = hypothesis.getHypstr();
+            makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void switchSearch(String searchName) {
@@ -75,10 +80,12 @@ public class PocketSphinxActivity extends Activity implements
 
     @Override
     public void onBeginningOfSpeech() {
+        Log.d(TAG, "   Beginning of speech");
     }
 
     @Override
     public void onEndOfSpeech() {
+        Log.d(TAG, "   End of speech");
         if (DIGITS_SEARCH.equals(recognizer.getSearchName())
                 || FORECAST_SEARCH.equals(recognizer.getSearchName()))
             switchSearch(KWS_SEARCH_NAME);
@@ -90,12 +97,18 @@ public class PocketSphinxActivity extends Activity implements
 
     @Override
     public void onTaskComplete(File assetsDir) {
+        Log.d(TAG, "Assets dir " + assetsDir);
+        // /storage/emulated/0/Android/data/edu.cmu.pocketsphinx.demo/files/sync
+        // see pocketsphinx-android/Assets.java
+
+        // assetsDir = new File("/sdcard/kartulipocketsphinx/sync");
+        // assetsDir.mkdirs();
+
         File modelsDir = new File(assetsDir, "models");
         recognizer = defaultSetup()
                 .setAcousticModel(new File(modelsDir, "hmm/en-us-semi"))
                 .setDictionary(new File(modelsDir, "lm/cmu07a.dic"))
-                .setRawLogDir(assetsDir)
-                .setKeywordThreshold(1e-5f)
+                .setRawLogDir(assetsDir).setKeywordThreshold(1e-5f)
                 .getRecognizer();
 
         recognizer.addListener(this);
