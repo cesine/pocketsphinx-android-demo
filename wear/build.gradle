@@ -12,7 +12,7 @@ android {
 }
 
 dependencies {
-    implementation project(':aars')
+    implementation 'cesine.educmupocketsphinx:pocketsphinx-android:5prealpha@aar'
     implementation project(':models')
     implementation 'com.google.android.support:wearable:2.1.0'
     compileOnly 'com.google.android.wearable:wearable:2.1.0'
