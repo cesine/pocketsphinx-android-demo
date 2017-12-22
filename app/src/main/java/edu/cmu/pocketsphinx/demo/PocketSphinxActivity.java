@@ -38,15 +38,20 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 import edu.cmu.pocketsphinx.Assets;
+import edu.cmu.pocketsphinx.Decoder;
 import edu.cmu.pocketsphinx.Hypothesis;
 import edu.cmu.pocketsphinx.RecognitionListener;
 import edu.cmu.pocketsphinx.SpeechRecognizer;
@@ -66,6 +71,8 @@ public class PocketSphinxActivity extends Activity implements
 
     /* Keyword we are looking for to activate menu */
     private static final String KEYPHRASE = "oh mighty computer";
+    private static final String SAVE_AUDIO_DIR = "/sdcard/pocketsphinx-android-demo/audio";
+    private static  final String TAG = "PocketSphinxDemo";
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -91,11 +98,12 @@ public class PocketSphinxActivity extends Activity implements
         // Check if user has given permission to record audio
         int permissionCheck = ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.RECORD_AUDIO);
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSIONS_REQUEST_RECORD_AUDIO);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_RECORD_AUDIO);
             return;
         }
         // Recognizer initialization is a time-consuming and it involves IO,
         // so we execute it in async task
+        (new File(SAVE_AUDIO_DIR)).mkdirs();
         new SetupTask(this).execute();
     }
 
@@ -184,6 +192,27 @@ public class PocketSphinxActivity extends Activity implements
         if (hypothesis != null) {
             String text = hypothesis.getHypstr();
             makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+            saveAudio("audio_"+ System.currentTimeMillis());
+        }
+    }
+
+    public void saveAudio(String filename) {
+        (new File(SAVE_AUDIO_DIR)).mkdirs();
+
+        // TODO this is always 0 bytes at this point
+        short[] data = recognizer.getDecoder().getRawdata();
+        Log.d(TAG, "saveAudio Data size: " + data.length);
+
+        try {
+            DataOutputStream dos = new DataOutputStream(new FileOutputStream(new File(SAVE_AUDIO_DIR + "/" + filename + ".raw")));
+            for (int i = 0; i < data.length; i++) {
+                dos.writeShort(data[i]);
+            }
+            dos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -221,7 +250,7 @@ public class PocketSphinxActivity extends Activity implements
                 .setAcousticModel(new File(assetsDir, "en-us-ptm"))
                 .setDictionary(new File(assetsDir, "cmudict-en-us.dict"))
 
-                .setRawLogDir(assetsDir) // To disable logging of raw audio comment out this call (takes a lot of space on the device)
+                .setRawLogDir(new File(SAVE_AUDIO_DIR)) // To disable logging of raw audio comment out this call (takes a lot of space on the device)
 
                 .getRecognizer();
         recognizer.addListener(this);
